@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VarshaSetu - Early Warning System</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header glass-panel">
+        <div class="header-left">
+            <div class="logo">🌊 VarshaSetu</div>
+            <div class="subtitle">AI-Powered Heavy Rainfall Early Warning & Inundation Prediction</div>
+        </div>
+        <div class="header-center">
+            <div class="clock" id="real-time-clock">00:00:00</div>
+            <div class="date" id="current-date">Loading...</div>
+        </div>
+        <div class="header-right">
+            <div class="system-status">
+                <span class="pulse-dot"></span> LIVE
+            </div>
+            <div class="data-badges">
+                <span class="badge">IMD</span>
+                <span class="badge">Satellite</span>
+                <span class="badge">Radar</span>
+                <span class="badge">NWP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Alert Ticker -->
+    <div class="alert-ticker-container">
+        <div class="alert-ticker" id="alert-ticker">
+            <div class="ticker-content" id="ticker-content">
+                Loading alerts...
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Left Sidebar -->
+        <aside class="sidebar left-sidebar">
+            <!-- City Search -->
+            <div class="panel glass-card search-panel">
+                <input type="text" id="city-search" class="search-input" placeholder="🔍 Search city...">
+                <div class="city-list" id="city-list">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Selected City Info -->
+            <div class="panel glass-card city-card" id="city-info-panel">
+                <h2 id="selected-city-name">Select a city</h2>
+                <p id="selected-city-state" class="text-secondary">--</p>
+                
+                <div class="weather-grid mt-4">
+                    <div class="weather-item">
+                        <span class="label">Temp</span>
+                        <span class="value" id="current-temp">--°C</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="label">Humidity</span>
+                        <span class="value" id="current-humidity">--%</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="label">Wind</span>
+                        <span class="value" id="current-wind">-- km/h</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="label">Rain Today</span>
+                        <span class="value" id="current-rain">-- mm</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction Confidence -->
+            <div class="panel glass-card confidence-panel">
+                <h3>Prediction Confidence</h3>
+                <div class="gauge-container">
+                    <svg viewBox="0 0 36 36" class="confidence-gauge">
+                        <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="gauge-fill" id="confidence-fill" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.5" class="gauge-text" id="confidence-text">--%</text>
+                    </svg>
+                </div>
+                <div class="model-stats text-sm text-secondary mt-2 text-center" id="model-stats">
+                    Accuracy: --% | Sources: NWP, Radar, IMD
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="panel glass-card quick-stats">
+                <div class="stat-row">
+                    <span>Monitored Cities</span>
+                    <span class="stat-badge" id="total-cities">--</span>
+                </div>
+                <div class="stat-row">
+                    <span>Active Alerts</span>
+                    <span class="stat-badge warning" id="total-alerts">--</span>
+                </div>
+                <div class="stat-row">
+                    <span>Max Rainfall</span>
+                    <span class="stat-badge danger" id="max-rain">-- mm</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Map -->
+        <section class="center-section">
+            <div class="map-container glass-card" id="map"></div>
+        </section>
+
+        <!-- Right Sidebar -->
+        <aside class="sidebar right-sidebar">
+            <!-- Active Alerts -->
+            <div class="panel glass-card alerts-panel">
+                <div class="panel-header">
+                    <h3>Active Alerts</h3>
+                    <button class="btn-icon" id="refresh-alerts" title="Refresh Alerts">↻</button>
+                </div>
+                <div class="alerts-list" id="active-alerts-list">
+                    <!-- Populated via JS -->
+                    <div class="loading-skeleton skeleton-alert"></div>
+                    <div class="loading-skeleton skeleton-alert"></div>
+                </div>
+            </div>
+
+            <!-- Inundation Details -->
+            <div class="panel glass-card inundation-panel" id="inundation-panel">
+                <h3>Inundation Risk</h3>
+                <div class="risk-header">
+                    <span class="risk-level-badge" id="risk-badge">SAFE</span>
+                </div>
+                
+                <div class="depth-visualizer mt-4">
+                    <div class="depth-label">Estimated Water Depth: <span id="est-depth">0.0m</span></div>
+                    <div class="depth-bar-container">
+                        <div class="depth-bar-fill" id="depth-bar"></div>
+                    </div>
+                </div>
+                
+                <div class="affected-area mt-4">
+                    <span class="label">Affected Area:</span>
+                    <span class="value" id="affected-area">--%</span>
+                </div>
+
+                <div class="risk-zones mt-2" id="risk-zones-list">
+                    <!-- Populated via JS -->
+                </div>
+
+                <div class="advisory mt-4" id="evacuation-advisory">
+                    No active advisories.
+                </div>
+            </div>
+
+            <!-- Data Source Status -->
+            <div class="panel glass-card data-sources-panel">
+                <h3>Data Sources</h3>
+                <div class="source-grid" id="data-sources-grid">
+                    <div class="data-source-card"><span class="status-dot green"></span> Satellite</div>
+                    <div class="data-source-card"><span class="status-dot green"></span> Radar</div>
+                    <div class="data-source-card"><span class="status-dot green"></span> AWS</div>
+                    <div class="data-source-card"><span class="status-dot green"></span> NWP</div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Bottom Analytics -->
+    <section class="bottom-section">
+        <div class="chart-container glass-card">
+            <h3>Rainfall Trend (7 Days)</h3>
+            <div class="chart-wrapper">
+                <canvas id="rainfallTrendChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-container glass-card">
+            <h3>District Comparison (Departure %)</h3>
+            <div class="chart-wrapper">
+                <canvas id="districtComparisonChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-container glass-card">
+            <h3>Alert Distribution</h3>
+            <div class="chart-wrapper">
+                <canvas id="alertDistributionChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Powered by IMD Data | Ministry of Earth Sciences | SIH 2026</p>
+        <p class="team-credit">Team Xyron</p>
+    </footer>
+
+    <!-- Scripts -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Heat -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="/static/js/map_layers.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
